@@ -28,6 +28,8 @@ const Board = () => {
 
     const [board, setBoard] = useState(BoardInit());
     const [selectedCell, setSelectedCell] = useState(null); // Store row and col of dragged cell
+    const [maxTurn, setMaxTurn] = useState(true) // max player is white
+
 
     // console.log(board);
 
@@ -124,10 +126,94 @@ const Board = () => {
         const newBoard = board.slice();
         newBoard[fromRow] = rowOfFrom;
         newBoard[toRow] = rowOfTo;
-    
+        
+        setMaxTurn(!maxTurn);
         setBoard(newBoard);
         
     };
+
+
+    const evaluateBoard = (board) => {
+        // const playerPiece = (maxTurn)? "w" : "b";
+        let score = 0;
+
+        for (let r = 0; r < 8; r++) {
+            const delta = r % 2;
+            for (let c = 0; c < 8; c = c + 2) {
+                const piece = board[r][c+delta];
+                if (piece) {
+                    score += (piece === "w")? 1 : -1;
+                }
+            }
+        }
+
+        return score;
+    }
+
+    const minimax = (board, isMaxTurn, depth, depthLeft) => {
+
+        const playerPiece = (isMaxTurn)? "w" : "b";
+
+        if (depth === depthLeft) {
+            console.log("Base Depth Hit")
+            return [evaluateBoard(board), [null, null]]
+        }
+        let validMoves = []
+        for (let r = 0; r < 8; r++) {
+            const delta = r % 2;
+            for (let c = 0; c < 8; c = c + 2) {
+                const piece = board[r][c+delta];
+                if (playerPiece === piece) {
+                    const moves = SimpleMove(r, c);
+                    if (moves) validMoves.push([[r, c], moves]);
+                }
+            }
+        }
+
+        let bestScore = null;
+        let bestMove = null;
+        
+        validMoves.forEach((move, _) => {
+            const [r_f, c_f] = move[0];
+            const tos = move[1];
+            tos.forEach((to, _) => {
+                const piece = board[r_f][c_f];
+                const [r_t, c_t] = to;
+                board[r_t][c_t] = board[r_f][c_f];
+                board[r_f][c_f] = null;
+
+                const newScore = minimax(board, !isMaxTurn, depth + 1, depthLeft);
+
+                if (isMaxTurn) {
+                    if (bestScore === null || newScore >= bestScore) {
+                        bestScore = newScore;
+                        bestMove = [move[0], to];
+                    }
+                }
+                else {
+                    if (bestScore === null || newScore <= bestScore) {
+                        bestScore = newScore;
+                        bestMove = [move[0], to];
+                    }
+                }
+
+                board[r_t][c_t] = null;
+                board[r_f][c_f] = piece;
+
+            })
+        })
+        return [bestScore, bestMove]
+        
+
+    }
+
+    if (!maxTurn) {
+        const [_, moveInfo] = minimax(board, maxTurn, 0, 8);
+        console.log(_, moveInfo);
+        const [[r_f, c_f], [r_t, c_t]] = moveInfo;
+        movePiece(r_f, c_f, r_t, c_t);
+        // const [maxTurn, setMaxTurn] = useState(true) // max player is white
+    }
 
     return (
         <div className="board">
