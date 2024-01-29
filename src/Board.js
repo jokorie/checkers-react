@@ -30,9 +30,6 @@ const Board = () => {
     const [selectedCell, setSelectedCell] = useState(null); // Store row and col of dragged cell
     const [maxTurn, setMaxTurn] = useState(true) // max player is white
 
-
-    // console.log(board);
-
     const Cell = ({row, col}) => {
 
         const selectedPiece = (selectedCell)? board[selectedCell.row][selectedCell.col] : null;
@@ -83,7 +80,6 @@ const Board = () => {
             </div>
         );
     }
-
     
     const InBounds = (row, col) => {
         return row >= 0 && row < 8 && col >= 0 && col < 8;
@@ -131,7 +127,6 @@ const Board = () => {
         setBoard(newBoard);
         
     };
-
 
     const evaluateBoard = (board) => {
         // const playerPiece = (maxTurn)? "w" : "b";
