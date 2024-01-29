@@ -1,0 +1,45 @@
+.board {
+    display: grid;
+    grid-template-columns: repeat(8, 50px); /* Adjust the number based on your grid */
+    grid-template-rows: repeat(8, 50px); /* Adjust the number based on your grid */
+    gap: 5px; /* Adjust the thickness of the lines */
+    justify-content: center;
+    align-items: center;
+    margin: auto;
+}
+
+.board-row {
+    display: contents;
+}
+
+.cell {
+    width: 50px; /* Adjust to your preference */
+    height: 50px; /* Adjust to your preference */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: black; 
+
+    /* Add more styling as needed */
+}
+
+.piece {
+    /* Styling for the pieces */
+}
+
+.piece.red {
+    background-color: red;
+}
+
+.piece.black {
+    background-color: black;
+}
+
+.white-cell {
+    background-color: white;
+}
+
+.black-cell {
+    background-color: black;
+}
+
