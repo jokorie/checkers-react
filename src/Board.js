@@ -43,21 +43,34 @@ const Board = () => {
         const piece = board[row][col];
 
         const handleClick = (row, col) => {
-            console.log(row, col, "clicked")
+            console.log(row, col, "clicked");
+            // console.log(selectedCell, "selected")
             if (selectedCell) {
                 // Move piece if the move is valid
                 // console.log(SimpleMove(selectedCell.row, selectedCell.col));
-                const validMoves = SimpleMove(selectedCell.row, selectedCell.col);
+                console.log("selected");
+                const validMoves = Move(selectedCell.row, selectedCell.col);
+                console.log(validMoves, "validmoves");
                 const move = [row, col];
-                const moveIsValid = validMoves.some(subList => 
-                    subList.length === move.length && 
-                    subList.every((element, index) => element === move[index])
-                );
-                
-                if (moveIsValid) {
-                    console.log("piece moved")
-                    movePiece(selectedCell.row, selectedCell.col, row, col);
+
+                for (let i = 0; i < validMoves.length; i++) {
+                    const [from, removed] = validMoves[i];
+                    // console.log(move, from, removed);
+                    let [rowRemoved, colRemoved] = [null, null];
+                    if (move.length == from.length && move.every((element, index) => element === from[index])) {
+                        console.log("piece moved");
+                        if (removed.length) {
+                            console.log("Attempting to remove", removed);
+                            [rowRemoved, colRemoved] = removed;
+                            console.log("successfully removed", removed)
+                        }
+                        // console.log(selectedCell.row, selectedCell.col, row, col);
+                        movePiece(selectedCell.row, selectedCell.col, row, col, rowRemoved, colRemoved);
+                        // console.log(board);
+                        break;
+                    }
                 }
+                console.log("Reset selected")
                 // Reset selection regardless of move validity
                 setSelectedCell(null);
               } 
@@ -105,14 +118,64 @@ const Board = () => {
             // console.log(dr, dc);
             // console.log(r+dr, c+dc);
             if (InBounds(r+dr, c+dc) && !board[r+dr][c+dc]) {
-                moves.push([r+dr, c+dc]);
+                moves.push([[r+dr, c+dc],[]]);
             }
         });
     
         return moves;
     }
+
+    const CaptureMove = (r, c) => {
+        const colorToDelta = {
+            "w": [[-1, -1], [-1, 1]],
+            "b": [[1, -1], [1, 1]],
+            "B": [[1, -1], [1, 1], [-1, -1], [-1, 1]],
+            "W": [[1, -1], [1, 1], [-1, -1], [-1, 1]],
+        }
     
-    const movePiece = (fromRow, fromCol, toRow, toCol) => {
+        const piece = board[r][c];
+        if (!piece) {
+            console.log("Invalid square selected");
+            return []
+        };
+    
+        let moves = [];
+        colorToDelta[piece].forEach(delta => {
+            const [dr, dc] = delta;
+            // console.log(r, c);
+            // console.log(r+dr, c+dc);
+            // console.log(r+2*dr, c+2*dc);
+
+            // console.log(InBounds(r+dr, c+dc),
+            // InBounds(r+2*dr, c+2*dc),
+            // board[r+dr][c+dc],
+            // board[r+dr][c+dc] !== piece,
+            // !(board[r+dr][c+dc]));
+
+            if (InBounds(r+dr, c+dc) && 
+                InBounds(r+2*dr, c+2*dc) && 
+                board[r+dr][c+dc] && 
+                board[r+dr][c+dc] !== piece &&
+                !(board[r+2*dr][c+2*dc])) {
+                moves.push([[r+2*dr, c+2*dc], [r+dr, c+dc]]);
+            }
+        });
+    
+        return moves;
+    }
+
+    const Move = (r, c) => {
+        const simpMoves = SimpleMove(r, c);
+        const captMoves = CaptureMove(r, c);
+        const moves = [...simpMoves, ...captMoves];
+    
+        return moves;
+    }
+    
+
+    const movePiece = (fromRow, fromCol, toRow, toCol, rowRemoved=null, colRemoved=null) => {
+        // console.log(board);
+        // console.log(fromRow, fromCol, toRow, toCol);
         const rowOfFrom = board[fromRow].slice();
         const rowOfTo = board[toRow].slice();
     
@@ -122,11 +185,31 @@ const Board = () => {
         const newBoard = board.slice();
         newBoard[fromRow] = rowOfFrom;
         newBoard[toRow] = rowOfTo;
+
+        if (rowRemoved) {
+            newBoard[rowRemoved][colRemoved] = null;
+        }
         
         setMaxTurn(!maxTurn);
         setBoard(newBoard);
         
     };
+
+    const clearCell = (r, c) => {
+        // console.log(board);
+        console.log(r, c);
+        console.log(board[r][c]);
+        const row = board[r].slice();
+        row[c] = null;
+        
+        const newBoard = board.slice();
+        newBoard[r] = row;
+
+        setBoard(newBoard);
+        // console.log(newBoard[r][c]);
+        // console.log(board[r][c]);
+    };
+    
 
     const evaluateBoard = (board) => {
         // const playerPiece = (maxTurn)? "w" : "b";
@@ -151,16 +234,18 @@ const Board = () => {
 
         if (depth === depthLeft) {
             console.log("Base Depth Hit")
-            return [evaluateBoard(board), [null, null]]
+            return [evaluateBoard(board), [null, [null, null]]]
         }
-        let validMoves = []
+        let validMoves = [];
         for (let r = 0; r < 8; r++) {
             const delta = r % 2;
             for (let c = 0; c < 8; c = c + 2) {
                 const piece = board[r][c+delta];
                 if (playerPiece === piece) {
-                    const moves = SimpleMove(r, c);
-                    if (moves) validMoves.push([[r, c], moves]);
+                    // console.log("Here")
+                    const moves = Move(r, c+delta);
+                    // console.log(r, c+delta, moves);
+                    if (moves) validMoves.push([[r, c+delta], moves]);
                 }
             }
         }
@@ -171,29 +256,35 @@ const Board = () => {
         validMoves.forEach((move, _) => {
             const [r_f, c_f] = move[0];
             const tos = move[1];
-            tos.forEach((to, _) => {
+            tos.forEach(([to, removed], _) => {
+                // console.log(removed);
+                const r_piece = (removed && removed.length)? board[removed[0]][removed[1]] : null
                 const piece = board[r_f][c_f];
                 const [r_t, c_t] = to;
                 board[r_t][c_t] = board[r_f][c_f];
                 board[r_f][c_f] = null;
+                if (removed && removed.length) board[removed[0]][removed[1]] = null;
 
                 const newScore = minimax(board, !isMaxTurn, depth + 1, depthLeft);
 
                 if (isMaxTurn) {
                     if (bestScore === null || newScore >= bestScore) {
                         bestScore = newScore;
-                        bestMove = [move[0], to];
+                        bestMove = [move[0], [to, removed]];
                     }
                 }
                 else {
                     if (bestScore === null || newScore <= bestScore) {
                         bestScore = newScore;
-                        bestMove = [move[0], to];
+                        bestMove = [move[0], [to, removed]];
                     }
                 }
 
                 board[r_t][c_t] = null;
                 board[r_f][c_f] = piece;
+
+                if (removed && removed.length) board[removed[0]][removed[1]] = r_piece;
+
 
             })
         })
@@ -203,10 +294,16 @@ const Board = () => {
     }
 
     if (!maxTurn) {
-        const [_, moveInfo] = minimax(board, maxTurn, 0, 8);
-        console.log(_, moveInfo);
-        const [[r_f, c_f], [r_t, c_t]] = moveInfo;
-        movePiece(r_f, c_f, r_t, c_t);
+        const [_, moveInfo] = minimax(board, maxTurn, 0, 4);
+        // console.log(_, moveInfo);
+        let [rowRemoved, colRemoved] = [null, null];
+        const [[r_f, c_f], [[r_t, c_t], removed]] = moveInfo;
+        // console.log(r_f, c_f, r_t, c_t);
+
+        if (removed && removed.length) {
+            [rowRemoved, colRemoved] = removed;
+        }
+        movePiece(r_f, c_f, r_t, c_t, rowRemoved, colRemoved);
         // const [maxTurn, setMaxTurn] = useState(true) // max player is white
     }
 
